@@ -1,5 +1,6 @@
 import type { ApplicationService } from '@adonisjs/core/types'
 import { DkitSigner } from '#services/dkit'
+import { DkitDnsVerifier } from '#services/dkit_dns_verifier'
 import env from '#start/env'
 
 export default class DkitProvider {
@@ -15,5 +16,7 @@ export default class DkitProvider {
       }
       return new DkitSigner(key)
     })
+
+    this.app.container.singleton(DkitDnsVerifier, () => new DkitDnsVerifier())
   }
 }
