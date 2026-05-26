@@ -11,8 +11,6 @@ const SUPPORTED_VERSION = 'DKIT1'
 export type DkitClaimInput = {
   fqdn: string
   selector: string
-  designUrl: string
-  sha256: string
   issuedAt: string
   market?: string
 }
@@ -21,8 +19,6 @@ export type DkitClaimPayload = {
   version: string
   fqdn: string
   selector: string
-  designUrl: string
-  sha256: string
   issuedAt: string
   market?: string
 }
@@ -69,8 +65,6 @@ function buildClaimBody(input: DkitClaimInput): string {
     `v=${SUPPORTED_VERSION}`,
     `d=${input.fqdn}`,
     `s=${input.selector}`,
-    `design=${input.designUrl}`,
-    `sha256=${input.sha256}`,
     `issued=${input.issuedAt}`,
   ]
   if (input.market) parts.push(`market=${input.market}`)
@@ -129,7 +123,7 @@ export class DkitVerifier {
     if (parsed.fields.v !== SUPPORTED_VERSION) {
       return { valid: false, reason: `unsupported version: ${parsed.fields.v}` }
     }
-    const required = ['d', 's', 'design', 'sha256', 'issued'] as const
+    const required = ['d', 's', 'issued'] as const
     for (const k of required) {
       if (!parsed.fields[k]) return { valid: false, reason: `missing field: ${k}` }
     }
@@ -146,8 +140,6 @@ export class DkitVerifier {
         version: parsed.fields.v,
         fqdn: parsed.fields.d,
         selector: parsed.fields.s,
-        designUrl: parsed.fields.design,
-        sha256: parsed.fields.sha256,
         issuedAt: parsed.fields.issued,
         market: parsed.fields.market,
       },
