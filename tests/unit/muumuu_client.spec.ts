@@ -198,3 +198,104 @@ test.group('MuumuuClient#listDomains', () => {
     }
   })
 })
+
+const domainFixture = {
+  id: 'MU00000001',
+  sld: 'example',
+  tld: 'com',
+  fqdn: 'example.com',
+  state: 'active' as const,
+  'setup-state': 'completed',
+  registrar: 'muumuu',
+  'whois-proxy-enabled': true,
+  'auto-renew-enabled': true,
+  'is-japanese-domain': false,
+  contract: {
+    id: 'CT00000001',
+    state: 'active',
+    term: 1,
+    'start-date': '2025-01-15',
+    'end-date': '2026-01-15',
+  },
+}
+
+test.group('MuumuuClient#getDomain', () => {
+  test('Authorization: Bearer ヘッダ付きで GET /me/domains/{id} を呼ぶ', async ({ assert }) => {
+    const { fetcher, calls } = createFakeFetcher(jsonResponse({ data: domainFixture }))
+    const client = new MuumuuClient({
+      baseUrl: 'https://api-sandbox.muumuu-domain.com/api/v2',
+      token: 'muu_pat_sandbox_test',
+      fetcher,
+    })
+
+    await client.getDomain('MU00000001')
+
+    assert.lengthOf(calls, 1)
+    assert.equal(
+      calls[0].url,
+      'https://api-sandbox.muumuu-domain.com/api/v2/me/domains/MU00000001'
+    )
+    assert.equal(calls[0].init?.method, 'GET')
+    const headers = new Headers(calls[0].init?.headers)
+    assert.equal(headers.get('Authorization'), 'Bearer muu_pat_sandbox_test')
+  })
+
+  test('レスポンスの data を Domain として返す', async ({ assert }) => {
+    const { fetcher } = createFakeFetcher(jsonResponse({ data: domainFixture }))
+    const client = new MuumuuClient({
+      baseUrl: 'https://api-sandbox.muumuu-domain.com/api/v2',
+      token: 'muu_pat_sandbox_test',
+      fetcher,
+    })
+
+    const domain = await client.getDomain('MU00000001')
+
+    assert.equal(domain.id, 'MU00000001')
+    assert.equal(domain.fqdn, 'example.com')
+    assert.equal(domain.contract['start-date'], '2025-01-15')
+  })
+
+  test('200 だが data フィールドが欠落したレスポンスは 502 invalid_response', async ({
+    assert,
+  }) => {
+    const { fetcher } = createFakeFetcher(jsonResponse({}))
+    const client = new MuumuuClient({
+      baseUrl: 'https://api-sandbox.muumuu-domain.com/api/v2',
+      token: 'muu_pat_sandbox_test',
+      fetcher,
+    })
+
+    try {
+      await client.getDomain('MU00000001')
+      assert.fail('expected MuumuuApiError')
+    } catch (err) {
+      assert.instanceOf(err, MuumuuApiError)
+      assert.equal((err as MuumuuApiError).status, 502)
+      assert.equal((err as MuumuuApiError).code, 'invalid_response')
+    }
+  })
+
+  test('404 のとき MuumuuApiError(404, "not_found") を投げる', async ({ assert }) => {
+    const { fetcher } = createFakeFetcher(
+      new Response(JSON.stringify({ error: { code: 'not_found', message: 'domain not found' } }), {
+        status: 404,
+        headers: { 'Content-Type': 'application/json' },
+      })
+    )
+    const client = new MuumuuClient({
+      baseUrl: 'https://api-sandbox.muumuu-domain.com/api/v2',
+      token: 'muu_pat_sandbox_test',
+      fetcher,
+    })
+
+    try {
+      await client.getDomain('MU99999999')
+      assert.fail('expected MuumuuApiError')
+    } catch (err) {
+      assert.instanceOf(err, MuumuuApiError)
+      const e = err as MuumuuApiError
+      assert.equal(e.status, 404)
+      assert.equal(e.code, 'not_found')
+    }
+  })
+})

@@ -39,7 +39,9 @@
         <ul style="list-style: none; padding: 0;">
           @each(domain in domains)
             <li style="border: 1px solid #ddd; border-radius: 8px; padding: 1rem; margin-bottom: 0.75rem;">
-              <h2 style="margin: 0 0 0.25rem 0; font-size: 1.25rem;">{{ domain.fqdn }}</h2>
+              <h2 style="margin: 0 0 0.25rem 0; font-size: 1.25rem;">
+                <a href="/domains/{{ domain.id }}" style="color: inherit; text-decoration: none;">{{ domain.fqdn }}</a>
+              </h2>
               <p style="margin: 0; color: #444; font-size: 0.9rem;">
                 since {{ domain.contract['start-date'] }}
                 <span style="color: #999;">— state: {{ domain.state }}</span>

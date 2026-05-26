@@ -66,6 +66,12 @@ function isListDomainsResponse(body: unknown): body is ListDomainsResponse {
   return true
 }
 
+function isSingleDomainResponse(body: unknown): body is { data: Domain } {
+  if (typeof body !== 'object' || body === null) return false
+  const b = body as Record<string, unknown>
+  return typeof b.data === 'object' && b.data !== null
+}
+
 export class MuumuuClient {
   private baseUrl: string
   private token: string
@@ -103,5 +109,33 @@ export class MuumuuClient {
       )
     }
     return body
+  }
+
+  async getDomain(id: string): Promise<Domain> {
+    const response = await this.fetcher(`${this.baseUrl}/me/domains/${encodeURIComponent(id)}`, {
+      method: 'GET',
+      headers: {
+        Authorization: `Bearer ${this.token}`,
+      },
+    })
+    if (!response.ok) {
+      const errBody = (await response.json().catch(() => ({}))) as ApiErrorBody
+      const retryAfterHeader = response.headers.get('Retry-After')
+      throw new MuumuuApiError(
+        response.status,
+        errBody.error?.code ?? 'unknown',
+        errBody.error?.message ?? response.statusText,
+        retryAfterHeader ? Number(retryAfterHeader) : undefined
+      )
+    }
+    const body = (await response.json().catch(() => null)) as unknown
+    if (!isSingleDomainResponse(body)) {
+      throw new MuumuuApiError(
+        502,
+        'invalid_response',
+        'getDomain response is missing or malformed data field'
+      )
+    }
+    return body.data
   }
 }

@@ -12,3 +12,5 @@ const DomainsController = () => import('#controllers/domains_controller')
 
 router.on('/').render('pages/home')
 router.get('/domains', [DomainsController, 'index'])
+router.get('/domains/:id', [DomainsController, 'show'])
+router.get('/domains/:id/tshirt.svg', [DomainsController, 'tshirtSvg'])
