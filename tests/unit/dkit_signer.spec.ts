@@ -27,6 +27,12 @@ test.group('DkitSigner.derivePublicKey', () => {
     const derived = DkitSigner.derivePublicKey(privateKey)
     assert.equal(derived, publicKey)
   })
+
+  test('instance.publicKey で公開鍵を取得できる (derivePublicKey と同じ値)', ({ assert }) => {
+    const { privateKey, publicKey } = DkitSigner.generateKeyPair()
+    const signer = new DkitSigner(privateKey)
+    assert.equal(signer.publicKey, publicKey)
+  })
 })
 
 test.group('DkitSigner#signClaim', () => {

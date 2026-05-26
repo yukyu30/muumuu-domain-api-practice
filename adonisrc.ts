@@ -50,6 +50,7 @@ export default defineConfig({
     () => import('@adonisjs/shield/shield_provider'),
     () => import('@adonisjs/static/static_provider'),
     () => import('#providers/muumuu_provider'),
+    () => import('#providers/dkit_provider'),
   ],
 
   /*

@@ -105,6 +105,10 @@ export class DkitSigner {
 
   constructor(private privateKeyBase64Url: string) {}
 
+  get publicKey(): string {
+    return DkitSigner.derivePublicKey(this.privateKeyBase64Url)
+  }
+
   signClaim(input: DkitClaimInput): string {
     const body = buildClaimBody(input)
     const seed = fromBase64Url(this.privateKeyBase64Url)
