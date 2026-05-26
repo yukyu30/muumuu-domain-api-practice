@@ -45,6 +45,53 @@ test.group('DkitSigner#signClaim', () => {
   })
 })
 
+test.group('DkitSigner#signClaim with optional market field', () => {
+  test('market URL を含めて署名し、verify でも payload.market を取り出せる', ({ assert }) => {
+    const { privateKey, publicKey } = DkitSigner.generateKeyPair()
+    const signer = new DkitSigner(privateKey)
+    const verifier = new DkitVerifier(publicKey)
+
+    const claim = signer.signClaim({
+      fqdn: 'example.com',
+      selector: 'default',
+      designUrl: 'https://app/domains/MU/tshirt.svg',
+      sha256: 'abc123',
+      issuedAt: '2026-05-27',
+      market: 'https://suzuri.jp/example/products/123',
+    })
+
+    assert.include(claim, 'market=https://suzuri.jp/example/products/123')
+
+    const result = verifier.verify(claim)
+    assert.isTrue(result.valid)
+    if (result.valid) {
+      assert.equal(result.payload.market, 'https://suzuri.jp/example/products/123')
+    }
+  })
+
+  test('market は optional — 省略しても signClaim / verify が動く', ({ assert }) => {
+    const { privateKey, publicKey } = DkitSigner.generateKeyPair()
+    const signer = new DkitSigner(privateKey)
+    const verifier = new DkitVerifier(publicKey)
+
+    const claim = signer.signClaim({
+      fqdn: 'example.com',
+      selector: 'default',
+      designUrl: 'https://app/domains/MU/tshirt.svg',
+      sha256: 'abc123',
+      issuedAt: '2026-05-27',
+    })
+
+    assert.notInclude(claim, 'market=')
+
+    const result = verifier.verify(claim)
+    assert.isTrue(result.valid)
+    if (result.valid) {
+      assert.isUndefined(result.payload.market)
+    }
+  })
+})
+
 test.group('DkitVerifier#verify', () => {
   test('同じドメイン鍵で署名された claim を valid=true で検証する', ({ assert }) => {
     const { privateKey, publicKey } = DkitSigner.generateKeyPair()
