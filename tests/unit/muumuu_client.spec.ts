@@ -1,0 +1,86 @@
+import { test } from '@japa/runner'
+import { MuumuuClient } from '#services/muumuu_client'
+
+type FetchCall = { url: string; init: RequestInit | undefined }
+
+function createFakeFetcher(response: Response): { fetcher: typeof fetch; calls: FetchCall[] } {
+  const calls: FetchCall[] = []
+  const fetcher: typeof fetch = async (input, init) => {
+    calls.push({ url: String(input), init })
+    return response.clone()
+  }
+  return { fetcher, calls }
+}
+
+function jsonResponse(body: unknown, init?: ResponseInit): Response {
+  return new Response(JSON.stringify(body), {
+    status: 200,
+    headers: { 'Content-Type': 'application/json' },
+    ...init,
+  })
+}
+
+test.group('MuumuuClient#listDomains', () => {
+  test('Authorization: Bearer ヘッダ付きで GET /me/domains を呼ぶ', async ({ assert }) => {
+    const { fetcher, calls } = createFakeFetcher(
+      jsonResponse({ data: [], meta: { total: 0, page: 1, 'page-size': 20 } })
+    )
+    const client = new MuumuuClient({
+      baseUrl: 'https://api-sandbox.muumuu-domain.com/api/v2',
+      token: 'muu_pat_sandbox_test',
+      fetcher,
+    })
+
+    await client.listDomains()
+
+    assert.lengthOf(calls, 1)
+    assert.equal(calls[0].url, 'https://api-sandbox.muumuu-domain.com/api/v2/me/domains')
+    assert.equal(calls[0].init?.method, 'GET')
+    const headers = new Headers(calls[0].init?.headers)
+    assert.equal(headers.get('Authorization'), 'Bearer muu_pat_sandbox_test')
+  })
+
+  test('レスポンスの data 配列を Domain[] として返し、meta も含む', async ({ assert }) => {
+    const apiBody = {
+      data: [
+        {
+          id: 'MU00000001',
+          sld: 'example',
+          tld: 'com',
+          fqdn: 'example.com',
+          state: 'active',
+          'setup-state': 'completed',
+          registrar: 'muumuu',
+          'whois-proxy-enabled': true,
+          'auto-renew-enabled': true,
+          'is-japanese-domain': false,
+          contract: {
+            id: 'CT00000001',
+            state: 'active',
+            term: 1,
+            'start-date': '2025-01-15',
+            'end-date': '2026-01-15',
+          },
+        },
+      ],
+      meta: { total: 1, page: 1, 'page-size': 20 },
+    }
+    const { fetcher } = createFakeFetcher(jsonResponse(apiBody))
+    const client = new MuumuuClient({
+      baseUrl: 'https://api-sandbox.muumuu-domain.com/api/v2',
+      token: 'muu_pat_sandbox_test',
+      fetcher,
+    })
+
+    const result = await client.listDomains()
+
+    assert.lengthOf(result.data, 1)
+    assert.equal(result.data[0].fqdn, 'example.com')
+    assert.equal(result.data[0].id, 'MU00000001')
+    assert.equal(result.data[0].state, 'active')
+    assert.equal(result.data[0].contract['start-date'], '2025-01-15')
+    assert.equal(result.meta.total, 1)
+    assert.equal(result.meta.page, 1)
+    assert.equal(result.meta['page-size'], 20)
+  })
+})
