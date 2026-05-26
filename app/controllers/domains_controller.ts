@@ -42,6 +42,21 @@ export default class DomainsController {
     }
   }
 
+  async tshirtSvg({ params, view, response }: HttpContext) {
+    try {
+      const domain = await this.muumuu.getDomain(params.id)
+      const svg = await view.render('pages/domains/tshirt_svg', { domain })
+      response.header('Content-Type', 'image/svg+xml; charset=utf-8')
+      return svg
+    } catch (err) {
+      if (err instanceof MuumuuApiError && err.status === 404) {
+        response.status(404)
+        return ''
+      }
+      throw err
+    }
+  }
+
   private toViewError(err: MuumuuApiError): ViewError {
     if (err.status === 401) {
       return { kind: 'unauthorized', message: err.message }

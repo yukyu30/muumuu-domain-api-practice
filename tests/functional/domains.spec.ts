@@ -183,3 +183,36 @@ test.group('GET /domains/:id', (group) => {
     assert.include(response.text(), '見つかりません')
   })
 })
+
+test.group('GET /domains/:id/tshirt.svg', (group) => {
+  group.each.teardown(() => {
+    app.container.restore(MuumuuClient)
+  })
+
+  test('image/svg+xml を返し、SVG 本文に fqdn と since <契約開始日> を含む', async ({
+    client,
+    assert,
+  }) => {
+    const stub = new StubDomainClient(sampleDomain)
+    app.container.swap(MuumuuClient, () => stub as unknown as MuumuuClient)
+
+    const response = await client.get('/domains/MU00000001/tshirt.svg')
+
+    response.assertStatus(200)
+    assert.include(response.header('content-type'), 'image/svg+xml')
+    const rawBody: unknown = response.text() ?? response.body()
+    const body = Buffer.isBuffer(rawBody) ? rawBody.toString('utf-8') : String(rawBody ?? '')
+    assert.include(body, '<svg')
+    assert.include(body, 'example.com')
+    assert.include(body, 'since 2025-01-15')
+  })
+
+  test('未知の id では 404 を返す', async ({ client }) => {
+    const stub = new StubDomainClient(sampleDomain)
+    app.container.swap(MuumuuClient, () => stub as unknown as MuumuuClient)
+
+    const response = await client.get('/domains/MU99999999/tshirt.svg')
+
+    response.assertStatus(404)
+  })
+})
