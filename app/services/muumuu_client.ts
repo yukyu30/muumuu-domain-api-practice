@@ -44,6 +44,20 @@ export type MuumuuClientOptions = {
   fetcher?: typeof fetch
 }
 
+export class MuumuuApiError extends Error {
+  constructor(
+    public readonly status: number,
+    public readonly code: string,
+    message: string,
+    public readonly retryAfter?: number
+  ) {
+    super(message)
+    this.name = 'MuumuuApiError'
+  }
+}
+
+type ApiErrorBody = { error?: { code?: string; message?: string } }
+
 export class MuumuuClient {
   private baseUrl: string
   private token: string
@@ -62,6 +76,16 @@ export class MuumuuClient {
         Authorization: `Bearer ${this.token}`,
       },
     })
+    if (!response.ok) {
+      const body = (await response.json().catch(() => ({}))) as ApiErrorBody
+      const retryAfterHeader = response.headers.get('Retry-After')
+      throw new MuumuuApiError(
+        response.status,
+        body.error?.code ?? 'unknown',
+        body.error?.message ?? response.statusText,
+        retryAfterHeader ? Number(retryAfterHeader) : undefined
+      )
+    }
     return (await response.json()) as ListDomainsResponse
   }
 }

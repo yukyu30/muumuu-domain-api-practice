@@ -1,5 +1,5 @@
 import { test } from '@japa/runner'
-import { MuumuuClient } from '#services/muumuu_client'
+import { MuumuuClient, MuumuuApiError } from '#services/muumuu_client'
 
 type FetchCall = { url: string; init: RequestInit | undefined }
 
@@ -82,5 +82,60 @@ test.group('MuumuuClient#listDomains', () => {
     assert.equal(result.meta.total, 1)
     assert.equal(result.meta.page, 1)
     assert.equal(result.meta['page-size'], 20)
+  })
+
+  test('401 のとき MuumuuApiError(401, "unauthorized") を投げる', async ({ assert }) => {
+    const { fetcher } = createFakeFetcher(
+      new Response(JSON.stringify({ error: { code: 'unauthorized', message: 'invalid token' } }), {
+        status: 401,
+        headers: { 'Content-Type': 'application/json' },
+      })
+    )
+    const client = new MuumuuClient({
+      baseUrl: 'https://api-sandbox.muumuu-domain.com/api/v2',
+      token: 'muu_pat_sandbox_bad',
+      fetcher,
+    })
+
+    try {
+      await client.listDomains()
+      assert.fail('expected MuumuuApiError to be thrown')
+    } catch (err) {
+      assert.instanceOf(err, MuumuuApiError)
+      const e = err as MuumuuApiError
+      assert.equal(e.status, 401)
+      assert.equal(e.code, 'unauthorized')
+      assert.equal(e.message, 'invalid token')
+    }
+  })
+
+  test('429 のとき Retry-After を retryAfter として保持した MuumuuApiError を投げる', async ({
+    assert,
+  }) => {
+    const { fetcher } = createFakeFetcher(
+      new Response(
+        JSON.stringify({ error: { code: 'rate_limited', message: 'too many requests' } }),
+        {
+          status: 429,
+          headers: { 'Content-Type': 'application/json', 'Retry-After': '30' },
+        }
+      )
+    )
+    const client = new MuumuuClient({
+      baseUrl: 'https://api-sandbox.muumuu-domain.com/api/v2',
+      token: 'muu_pat_sandbox_test',
+      fetcher,
+    })
+
+    try {
+      await client.listDomains()
+      assert.fail('expected MuumuuApiError to be thrown')
+    } catch (err) {
+      assert.instanceOf(err, MuumuuApiError)
+      const e = err as MuumuuApiError
+      assert.equal(e.status, 429)
+      assert.equal(e.code, 'rate_limited')
+      assert.equal(e.retryAfter, 30)
+    }
   })
 })
