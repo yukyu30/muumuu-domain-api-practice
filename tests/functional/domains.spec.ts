@@ -94,6 +94,7 @@ test.group('GET /domains', (group) => {
     const body = response.text()
     assert.include(body, 'example.com')
     assert.include(body, '2025-01-15')
+    assert.include(body, 'href="/domains/MU00000001"')
   })
 
   test('ドメインが 0 件のときは空状態メッセージを表示する', async ({ client, assert }) => {
@@ -171,6 +172,7 @@ test.group('GET /domains/:id', (group) => {
     const body = response.text()
     assert.include(body, 'example.com')
     assert.include(body, '2025-01-15')
+    assert.include(body, 'src="/domains/MU00000001/tshirt.svg"')
   })
 
   test('未知の id では 404 + 見つかりません表示', async ({ client, assert }) => {

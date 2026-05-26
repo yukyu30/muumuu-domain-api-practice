@@ -46,6 +46,14 @@
         <dt style="color: #666;">自動更新</dt><dd style="margin: 0;">{{ domain['auto-renew-enabled'] ? 'ON' : 'OFF' }}</dd>
         <dt style="color: #666;">Whois 代理</dt><dd style="margin: 0;">{{ domain['whois-proxy-enabled'] ? 'ON' : 'OFF' }}</dd>
       </dl>
+
+      <section style="margin-top: 2rem;">
+        <h2 style="margin: 0 0 0.75rem 0; font-size: 1.1rem;">T シャツ用デザイン</h2>
+        <img src="/domains/{{ domain.id }}/tshirt.svg" alt="{{ domain.fqdn }} T-shirt design" style="display: block; width: 100%; max-width: 600px; border: 1px solid #ddd; border-radius: 8px;" />
+        <p style="margin: 0.5rem 0 0 0; font-size: 0.85rem;">
+          <a href="/domains/{{ domain.id }}/tshirt.svg" download>SVG をダウンロード</a>
+        </p>
+      </section>
     @end
   </body>
 </html>
