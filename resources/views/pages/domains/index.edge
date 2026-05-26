@@ -8,22 +8,46 @@
   </head>
   <body style="font-family: system-ui, sans-serif; max-width: 720px; margin: 2rem auto; padding: 0 1rem;">
     <h1>あなたのドメイン一覧</h1>
-    <p style="color: #666;">取得件数: {{ meta.total }}</p>
 
-    @if(domains.length === 0)
-      <p>ドメインがまだ登録されていません。</p>
-    @else
-      <ul style="list-style: none; padding: 0;">
-        @each(domain in domains)
-          <li style="border: 1px solid #ddd; border-radius: 8px; padding: 1rem; margin-bottom: 0.75rem;">
-            <h2 style="margin: 0 0 0.25rem 0; font-size: 1.25rem;">{{ domain.fqdn }}</h2>
-            <p style="margin: 0; color: #444; font-size: 0.9rem;">
-              since {{ domain.contract['start-date'] }}
-              <span style="color: #999;">— state: {{ domain.state }}</span>
-            </p>
-          </li>
+    @if(error)
+      <div role="alert" style="border: 1px solid #c33; background: #fff5f5; color: #900; border-radius: 8px; padding: 1rem; margin-bottom: 1rem;">
+        @if(error.kind === 'unauthorized')
+          <p style="margin: 0; font-weight: 600;">ムームードメインの API トークンが無効か期限切れです。</p>
+          <p style="margin: 0.5rem 0 0 0; font-size: 0.9rem;">.env の <code>MUUMUU_API_TOKEN</code> を最新の Personal Access Token に更新してください。</p>
+        @elseif(error.kind === 'rate_limited')
+          <p style="margin: 0; font-weight: 600;">リクエストが多すぎます。</p>
+          <p style="margin: 0.5rem 0 0 0; font-size: 0.9rem;">
+            @if(error.retryAfter)
+              {{ error.retryAfter }} 秒後に再試行してください。
+            @else
+              しばらく時間を空けて再試行してください。
+            @end
+          </p>
+        @else
+          <p style="margin: 0; font-weight: 600;">ドメイン一覧の取得に失敗しました。</p>
+          <p style="margin: 0.5rem 0 0 0; font-size: 0.9rem;">
+            上流 API エラー: {{ error.status }} {{ error.code }} — {{ error.message }}
+          </p>
         @end
-      </ul>
+      </div>
+    @else
+      <p style="color: #666;">取得件数: {{ meta.total }}</p>
+
+      @if(domains.length === 0)
+        <p>ドメインがまだ登録されていません。</p>
+      @else
+        <ul style="list-style: none; padding: 0;">
+          @each(domain in domains)
+            <li style="border: 1px solid #ddd; border-radius: 8px; padding: 1rem; margin-bottom: 0.75rem;">
+              <h2 style="margin: 0 0 0.25rem 0; font-size: 1.25rem;">{{ domain.fqdn }}</h2>
+              <p style="margin: 0; color: #444; font-size: 0.9rem;">
+                since {{ domain.contract['start-date'] }}
+                <span style="color: #999;">— state: {{ domain.state }}</span>
+              </p>
+            </li>
+          @end
+        </ul>
+      @end
     @end
   </body>
 </html>
