@@ -126,6 +126,48 @@ test.group('MuumuuClient#listDomains', () => {
     assert.equal(calls[0].url, 'https://api-sandbox.muumuu-domain.com/api/v2/me/domains')
   })
 
+  test('200 だが data フィールドが欠落したレスポンスは MuumuuApiError(502, "invalid_response") を投げる', async ({
+    assert,
+  }) => {
+    const { fetcher } = createFakeFetcher(jsonResponse({ meta: { total: 0, page: 1, 'page-size': 20 } }))
+    const client = new MuumuuClient({
+      baseUrl: 'https://api-sandbox.muumuu-domain.com/api/v2',
+      token: 'muu_pat_sandbox_test',
+      fetcher,
+    })
+
+    try {
+      await client.listDomains()
+      assert.fail('expected MuumuuApiError to be thrown')
+    } catch (err) {
+      assert.instanceOf(err, MuumuuApiError)
+      const e = err as MuumuuApiError
+      assert.equal(e.status, 502)
+      assert.equal(e.code, 'invalid_response')
+    }
+  })
+
+  test('200 だが data が配列でないレスポンスは MuumuuApiError(502, "invalid_response") を投げる', async ({
+    assert,
+  }) => {
+    const { fetcher } = createFakeFetcher(
+      jsonResponse({ data: null, meta: { total: 0, page: 1, 'page-size': 20 } })
+    )
+    const client = new MuumuuClient({
+      baseUrl: 'https://api-sandbox.muumuu-domain.com/api/v2',
+      token: 'muu_pat_sandbox_test',
+      fetcher,
+    })
+
+    try {
+      await client.listDomains()
+      assert.fail('expected MuumuuApiError to be thrown')
+    } catch (err) {
+      assert.instanceOf(err, MuumuuApiError)
+      assert.equal((err as MuumuuApiError).status, 502)
+    }
+  })
+
   test('429 のとき Retry-After を retryAfter として保持した MuumuuApiError を投げる', async ({
     assert,
   }) => {

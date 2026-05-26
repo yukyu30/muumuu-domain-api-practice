@@ -58,6 +58,14 @@ export class MuumuuApiError extends Error {
 
 type ApiErrorBody = { error?: { code?: string; message?: string } }
 
+function isListDomainsResponse(body: unknown): body is ListDomainsResponse {
+  if (typeof body !== 'object' || body === null) return false
+  const b = body as Record<string, unknown>
+  if (!Array.isArray(b.data)) return false
+  if (typeof b.meta !== 'object' || b.meta === null) return false
+  return true
+}
+
 export class MuumuuClient {
   private baseUrl: string
   private token: string
@@ -86,6 +94,14 @@ export class MuumuuClient {
         retryAfterHeader ? Number(retryAfterHeader) : undefined
       )
     }
-    return (await response.json()) as ListDomainsResponse
+    const body = (await response.json().catch(() => null)) as unknown
+    if (!isListDomainsResponse(body)) {
+      throw new MuumuuApiError(
+        502,
+        'invalid_response',
+        'listDomains response is missing or malformed data/meta fields'
+      )
+    }
+    return body
   }
 }
