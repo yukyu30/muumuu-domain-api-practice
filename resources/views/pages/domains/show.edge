@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="ja">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{{ domain ? domain.fqdn : 'ドメインが見つかりません' }}</title>
+    @vite(['resources/css/app.css', 'resources/js/app.js'])
+  </head>
+  <body style="font-family: system-ui, sans-serif; max-width: 720px; margin: 2rem auto; padding: 0 1rem;">
+    <p style="margin: 0 0 1rem 0;"><a href="/domains">← ドメイン一覧へ</a></p>
+
+    @if(error)
+      <div role="alert" style="border: 1px solid #c33; background: #fff5f5; color: #900; border-radius: 8px; padding: 1rem;">
+        @if(error.kind === 'not_found')
+          <p style="margin: 0; font-weight: 600;">指定されたドメインが見つかりませんでした。</p>
+        @elseif(error.kind === 'unauthorized')
+          <p style="margin: 0; font-weight: 600;">ムームードメインの API トークンが無効か期限切れです。</p>
+          <p style="margin: 0.5rem 0 0 0; font-size: 0.9rem;">.env の <code>MUUMUU_API_TOKEN</code> を最新の Personal Access Token に更新してください。</p>
+        @elseif(error.kind === 'rate_limited')
+          <p style="margin: 0; font-weight: 600;">リクエストが多すぎます。</p>
+          <p style="margin: 0.5rem 0 0 0; font-size: 0.9rem;">
+            @if(error.retryAfter)
+              {{ error.retryAfter }} 秒後に再試行してください。
+            @else
+              しばらく時間を空けて再試行してください。
+            @end
+          </p>
+        @else
+          <p style="margin: 0; font-weight: 600;">ドメイン詳細の取得に失敗しました。</p>
+          <p style="margin: 0.5rem 0 0 0; font-size: 0.9rem;">
+            上流 API エラー: {{ error.status }} {{ error.code }} — {{ error.message }}
+          </p>
+        @end
+      </div>
+    @else
+      <h1 style="margin: 0 0 0.5rem 0;">{{ domain.fqdn }}</h1>
+      <p style="color: #444; margin: 0 0 1.5rem 0;">
+        since {{ domain.contract['start-date'] }}
+        <span style="color: #999;">— state: {{ domain.state }}</span>
+      </p>
+
+      <dl style="display: grid; grid-template-columns: max-content 1fr; gap: 0.5rem 1rem; font-size: 0.95rem; margin-bottom: 2rem;">
+        <dt style="color: #666;">ID</dt><dd style="margin: 0;">{{ domain.id }}</dd>
+        <dt style="color: #666;">レジストラ</dt><dd style="margin: 0;">{{ domain.registrar }}</dd>
+        <dt style="color: #666;">契約期間</dt><dd style="margin: 0;">{{ domain.contract['start-date'] }} ~ {{ domain.contract['end-date'] }} ({{ domain.contract.term }}年)</dd>
+        <dt style="color: #666;">自動更新</dt><dd style="margin: 0;">{{ domain['auto-renew-enabled'] ? 'ON' : 'OFF' }}</dd>
+        <dt style="color: #666;">Whois 代理</dt><dd style="margin: 0;">{{ domain['whois-proxy-enabled'] ? 'ON' : 'OFF' }}</dd>
+      </dl>
+
+      <section style="margin-top: 2rem;">
+        <h2 style="margin: 0 0 0.75rem 0; font-size: 1.1rem;">T シャツ用デザイン</h2>
+        <img src="/domains/{{ domain.id }}/tshirt.svg" alt="{{ domain.fqdn }} T-shirt design" style="display: block; width: 100%; max-width: 600px; border: 1px solid #ddd; border-radius: 8px;" />
+        <p style="margin: 0.5rem 0 0 0; font-size: 0.85rem;">
+          <a href="/domains/{{ domain.id }}/tshirt.svg" download>SVG をダウンロード</a>
+        </p>
+      </section>
+    @end
+  </body>
+</html>

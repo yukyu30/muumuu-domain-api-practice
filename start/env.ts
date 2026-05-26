@@ -32,4 +32,13 @@ export default await Env.create(new URL('../', import.meta.url), {
   */
   MUUMUU_API_BASE_URL: Env.schema.string({ format: 'url', protocol: true }),
   MUUMUU_API_TOKEN: Env.schema.string(),
+
+  /*
+  |----------------------------------------------------------
+  | DKIT (DomainKeys Identified T-shirt)
+  |----------------------------------------------------------
+  | base64url-encoded raw 32-byte ed25519 seed.
+  | Generate with: `node ace dkit:keygen`
+  */
+  DKIT_PRIVATE_KEY: Env.schema.string.optional(),
 })

@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="ja">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>DKIT 検証</title>
+    @vite(['resources/css/app.css', 'resources/js/app.js'])
+  </head>
+  <body style="font-family: system-ui, -apple-system, sans-serif; max-width: 720px; margin: 2rem auto; padding: 0 1rem; color: #21201c;">
+    <header style="margin-bottom: 1.5rem;">
+      <h1 style="margin: 0 0 0.25rem 0; font-size: 1.5rem;">DKIT 検証</h1>
+      <p style="margin: 0; color: #63635e; font-size: 0.9rem;">
+        T シャツの QR から飛んできた人向けの真贋検証ページ
+      </p>
+    </header>
+
+    @if(!result)
+      <section style="border: 1px solid #cfceca; border-radius: 8px; padding: 1.5rem; background: #f9f9f8;">
+        <p style="margin: 0 0 0.5rem 0; font-weight: 600;">QR を読んでこのページに来てください。</p>
+        <p style="margin: 0; font-size: 0.9rem; color: #63635e;">
+          T シャツに印刷された QR コードをスキャンすると、claim パラメータ付きで
+          このページが開き、ドメイン所有者の公証済みかどうかが表示されます。
+        </p>
+      </section>
+    @elseif(result.kind === 'valid')
+      <section role="status" style="border: 2px solid #058a39; background: #f0fff5; border-radius: 8px; padding: 1.5rem;">
+        <p style="margin: 0 0 1rem 0; font-size: 1.2rem; font-weight: 700; color: #058a39;">
+          ✓ 正規 — 検証に成功しました
+        </p>
+        <dl style="display: grid; grid-template-columns: max-content 1fr; gap: 0.5rem 1rem; margin: 0; font-size: 0.95rem;">
+          <dt style="color: #444;">公証ドメイン</dt>
+          <dd style="margin: 0; font-weight: 600;">{{ result.payload.fqdn }}</dd>
+          <dt style="color: #444;">公証日</dt>
+          <dd style="margin: 0;">{{ result.payload.issuedAt }}</dd>
+          <dt style="color: #444;">セレクタ</dt>
+          <dd style="margin: 0;">{{ result.payload.selector }}</dd>
+          @if(result.payload.market)
+            <dt style="color: #444;">正規販売ページ</dt>
+            <dd style="margin: 0;">
+              <a href="{{ result.payload.market }}" target="_blank" rel="noopener">{{ result.payload.market }}</a>
+            </dd>
+          @end
+        </dl>
+        <p style="margin: 1rem 0 0 0; font-size: 0.85rem; color: #63635e;">
+          DNS の <code>{{ result.payload.selector }}._dkit.{{ result.payload.fqdn }}</code> に登録された
+          公開鍵で署名検証 (ed25519) に成功しました。
+        </p>
+      </section>
+    @elseif(result.kind === 'signature_mismatch')
+      <section role="alert" style="border: 2px solid #c33; background: #fff5f5; border-radius: 8px; padding: 1.5rem;">
+        <p style="margin: 0 0 0.5rem 0; font-size: 1.2rem; font-weight: 700; color: #900;">
+          ✗ 検証に失敗しました
+        </p>
+        <p style="margin: 0; font-size: 0.95rem;">
+          DNS に登録された公開鍵では、この claim の署名を検証できませんでした。
+          海賊版または改竄された可能性があります。
+        </p>
+        <p style="margin: 0.5rem 0 0 0; font-size: 0.85rem; color: #63635e;">理由: {{ result.reason }}</p>
+      </section>
+    @elseif(result.kind === 'public_key_not_found')
+      <section role="alert" style="border: 2px solid #c33; background: #fff5f5; border-radius: 8px; padding: 1.5rem;">
+        <p style="margin: 0 0 0.5rem 0; font-size: 1.2rem; font-weight: 700; color: #900;">
+          ✗ 公開鍵が DNS に登録されていません
+        </p>
+        <p style="margin: 0; font-size: 0.95rem;">
+          このドメインの DKIT 公開鍵 TXT (<code>{{ result.lookup }}</code>) が見つかりませんでした。
+          まだ公証フローが完了していないか、別のセレクタが使われている可能性があります。
+        </p>
+      </section>
+    @elseif(result.kind === 'malformed_claim')
+      <section role="alert" style="border: 2px solid #c33; background: #fff5f5; border-radius: 8px; padding: 1.5rem;">
+        <p style="margin: 0 0 0.5rem 0; font-size: 1.2rem; font-weight: 700; color: #900;">
+          ✗ claim の形式が不正です
+        </p>
+        <p style="margin: 0; font-size: 0.85rem; color: #63635e;">理由: {{ result.reason }}</p>
+      </section>
+    @else
+      <section role="alert" style="border: 2px solid #c33; background: #fff5f5; border-radius: 8px; padding: 1.5rem;">
+        <p style="margin: 0 0 0.5rem 0; font-size: 1.2rem; font-weight: 700; color: #900;">
+          ✗ DNS 解決エラー
+        </p>
+        <p style="margin: 0; font-size: 0.85rem; color: #63635e;">理由: {{ result.reason }}</p>
+      </section>
+    @end
+
+    <footer style="margin-top: 3rem; color: #82827c; font-size: 0.8rem;">
+      <p style="margin: 0;">
+        DKIT (DomainKeys Identified T-shirt): DKIM のパターンを T シャツの真贋証明に応用した仕組みです。
+        詳細は <a href="https://github.com/yukyu30/muumuu-domain-api-practice/blob/main/docs/dkit.md" style="color: inherit;">docs/dkit.md</a>。
+      </p>
+    </footer>
+  </body>
+</html>

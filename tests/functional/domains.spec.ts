@@ -18,6 +18,42 @@ class ThrowingMuumuuClient {
   async listDomains(): Promise<ListDomainsResponse> {
     throw this.error
   }
+  async getDomain(): Promise<never> {
+    throw this.error
+  }
+}
+
+const sampleDomain = {
+  id: 'MU00000001',
+  sld: 'example',
+  tld: 'com',
+  fqdn: 'example.com',
+  state: 'active' as const,
+  'setup-state': 'completed',
+  registrar: 'muumuu',
+  'whois-proxy-enabled': true,
+  'auto-renew-enabled': true,
+  'is-japanese-domain': false,
+  contract: {
+    id: 'CT00000001',
+    state: 'active',
+    term: 1,
+    'start-date': '2025-01-15',
+    'end-date': '2026-01-15',
+  },
+}
+
+class StubDomainClient {
+  constructor(private domain: typeof sampleDomain) {}
+  async listDomains(): Promise<ListDomainsResponse> {
+    return { data: [this.domain], meta: { total: 1, page: 1, 'page-size': 20 } }
+  }
+  async getDomain(id: string): Promise<typeof sampleDomain> {
+    if (id !== this.domain.id) {
+      throw new MuumuuApiError(404, 'not_found', `domain ${id} not found`)
+    }
+    return this.domain
+  }
 }
 
 test.group('GET /domains', (group) => {
@@ -58,6 +94,7 @@ test.group('GET /domains', (group) => {
     const body = response.text()
     assert.include(body, 'example.com')
     assert.include(body, '2025-01-15')
+    assert.include(body, 'href="/domains/MU00000001"')
   })
 
   test('ドメインが 0 件のときは空状態メッセージを表示する', async ({ client, assert }) => {
@@ -117,5 +154,67 @@ test.group('GET /domains', (group) => {
 
     response.assertStatus(502)
     assert.include(response.text(), 'ドメイン一覧の取得に失敗')
+  })
+})
+
+test.group('GET /domains/:id', (group) => {
+  group.each.teardown(() => {
+    app.container.restore(MuumuuClient)
+  })
+
+  test('200 を返し、fqdn と契約開始日を含む詳細を表示する', async ({ client, assert }) => {
+    const stub = new StubDomainClient(sampleDomain)
+    app.container.swap(MuumuuClient, () => stub as unknown as MuumuuClient)
+
+    const response = await client.get('/domains/MU00000001')
+
+    response.assertStatus(200)
+    const body = response.text()
+    assert.include(body, 'example.com')
+    assert.include(body, '2025-01-15')
+    assert.include(body, 'src="/domains/MU00000001/tshirt.svg"')
+  })
+
+  test('未知の id では 404 + 見つかりません表示', async ({ client, assert }) => {
+    const stub = new StubDomainClient(sampleDomain)
+    app.container.swap(MuumuuClient, () => stub as unknown as MuumuuClient)
+
+    const response = await client.get('/domains/MU99999999')
+
+    response.assertStatus(404)
+    assert.include(response.text(), '見つかりません')
+  })
+})
+
+test.group('GET /domains/:id/tshirt.svg', (group) => {
+  group.each.teardown(() => {
+    app.container.restore(MuumuuClient)
+  })
+
+  test('image/svg+xml を返し、SVG 本文に fqdn と since <契約開始日> を含む', async ({
+    client,
+    assert,
+  }) => {
+    const stub = new StubDomainClient(sampleDomain)
+    app.container.swap(MuumuuClient, () => stub as unknown as MuumuuClient)
+
+    const response = await client.get('/domains/MU00000001/tshirt.svg')
+
+    response.assertStatus(200)
+    assert.include(response.header('content-type'), 'image/svg+xml')
+    const rawBody: unknown = response.text() ?? response.body()
+    const body = Buffer.isBuffer(rawBody) ? rawBody.toString('utf-8') : String(rawBody ?? '')
+    assert.include(body, '<svg')
+    assert.include(body, 'example.com')
+    assert.include(body, 'since 2025-01-15')
+  })
+
+  test('未知の id では 404 を返す', async ({ client }) => {
+    const stub = new StubDomainClient(sampleDomain)
+    app.container.swap(MuumuuClient, () => stub as unknown as MuumuuClient)
+
+    const response = await client.get('/domains/MU99999999/tshirt.svg')
+
+    response.assertStatus(404)
   })
 })
