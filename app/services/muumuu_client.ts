@@ -38,6 +38,36 @@ export type ListDomainsResponse = {
   meta: ListMeta
 }
 
+export type DnsRecordType =
+  | 'A'
+  | 'AAAA'
+  | 'CNAME'
+  | 'MX'
+  | 'TXT'
+  | 'NS'
+  | 'ALIAS'
+  | 'SRV'
+  | 'CAA'
+
+export type CreateDnsRecordInput = {
+  fqdn: string
+  type: DnsRecordType
+  value: string
+  ttl?: number
+  priority?: number
+}
+
+export type DnsRecord = {
+  id: number
+  fqdn: string
+  type: DnsRecordType
+  value: string
+  ttl: number
+  priority?: number
+  'created-at': string
+  'updated-at': string
+}
+
 export type MuumuuClientOptions = {
   baseUrl: string
   token: string
@@ -67,6 +97,12 @@ function isListDomainsResponse(body: unknown): body is ListDomainsResponse {
 }
 
 function isSingleDomainResponse(body: unknown): body is { data: Domain } {
+  if (typeof body !== 'object' || body === null) return false
+  const b = body as Record<string, unknown>
+  return typeof b.data === 'object' && b.data !== null
+}
+
+function isDnsRecordResponse(body: unknown): body is { data: DnsRecord } {
   if (typeof body !== 'object' || body === null) return false
   const b = body as Record<string, unknown>
   return typeof b.data === 'object' && b.data !== null
@@ -134,6 +170,40 @@ export class MuumuuClient {
         502,
         'invalid_response',
         'getDomain response is missing or malformed data field'
+      )
+    }
+    return body.data
+  }
+
+  async createDnsRecord(domainId: string, input: CreateDnsRecordInput): Promise<DnsRecord> {
+    const response = await this.fetcher(
+      `${this.baseUrl}/me/domains/${encodeURIComponent(domainId)}/dns-records`,
+      {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${this.token}`,
+          'Content-Type': 'application/json',
+          Accept: 'application/json',
+        },
+        body: JSON.stringify(input),
+      }
+    )
+    if (!response.ok) {
+      const errBody = (await response.json().catch(() => ({}))) as ApiErrorBody
+      const retryAfterHeader = response.headers.get('Retry-After')
+      throw new MuumuuApiError(
+        response.status,
+        errBody.error?.code ?? 'unknown',
+        errBody.error?.message ?? response.statusText,
+        retryAfterHeader ? Number(retryAfterHeader) : undefined
+      )
+    }
+    const body = (await response.json().catch(() => null)) as unknown
+    if (!isDnsRecordResponse(body)) {
+      throw new MuumuuApiError(
+        502,
+        'invalid_response',
+        'createDnsRecord response is missing or malformed data field'
       )
     }
     return body.data

@@ -299,3 +299,103 @@ test.group('MuumuuClient#getDomain', () => {
     }
   })
 })
+
+const dnsRecordFixture = {
+  id: 42,
+  fqdn: '_tshirt-key.example.com.',
+  type: 'TXT' as const,
+  value: 'v=1; alg=ed25519; pk=Abc123',
+  ttl: 3600,
+  'created-at': '2026-05-27T15:00:00+09:00',
+  'updated-at': '2026-05-27T15:00:00+09:00',
+}
+
+test.group('MuumuuClient#createDnsRecord', () => {
+  test('Authorization: Bearer + JSON ボディで POST /me/domains/{id}/dns-records を呼ぶ', async ({
+    assert,
+  }) => {
+    const { fetcher, calls } = createFakeFetcher(
+      new Response(JSON.stringify({ data: dnsRecordFixture }), {
+        status: 201,
+        headers: { 'Content-Type': 'application/json' },
+      })
+    )
+    const client = new MuumuuClient({
+      baseUrl: 'https://api-sandbox.muumuu-domain.com/api/v2',
+      token: 'muu_pat_sandbox_test',
+      fetcher,
+    })
+
+    await client.createDnsRecord('MU00000001', {
+      fqdn: '_tshirt-key.example.com.',
+      type: 'TXT',
+      value: 'v=1; alg=ed25519; pk=Abc123',
+    })
+
+    assert.lengthOf(calls, 1)
+    assert.equal(
+      calls[0].url,
+      'https://api-sandbox.muumuu-domain.com/api/v2/me/domains/MU00000001/dns-records'
+    )
+    assert.equal(calls[0].init?.method, 'POST')
+    const headers = new Headers(calls[0].init?.headers)
+    assert.equal(headers.get('Authorization'), 'Bearer muu_pat_sandbox_test')
+    assert.include(headers.get('Content-Type') ?? '', 'application/json')
+    const body = JSON.parse(String(calls[0].init?.body))
+    assert.equal(body.fqdn, '_tshirt-key.example.com.')
+    assert.equal(body.type, 'TXT')
+    assert.equal(body.value, 'v=1; alg=ed25519; pk=Abc123')
+  })
+
+  test('レスポンスの data を DnsRecord として返す', async ({ assert }) => {
+    const { fetcher } = createFakeFetcher(
+      new Response(JSON.stringify({ data: dnsRecordFixture }), {
+        status: 201,
+        headers: { 'Content-Type': 'application/json' },
+      })
+    )
+    const client = new MuumuuClient({
+      baseUrl: 'https://api-sandbox.muumuu-domain.com/api/v2',
+      token: 'muu_pat_sandbox_test',
+      fetcher,
+    })
+
+    const record = await client.createDnsRecord('MU00000001', {
+      fqdn: '_tshirt-key.example.com.',
+      type: 'TXT',
+      value: 'v=1; alg=ed25519; pk=Abc123',
+    })
+
+    assert.equal(record.id, 42)
+    assert.equal(record.fqdn, '_tshirt-key.example.com.')
+    assert.equal(record.type, 'TXT')
+  })
+
+  test('409 のとき MuumuuApiError(409, "duplicate") を投げる', async ({ assert }) => {
+    const { fetcher } = createFakeFetcher(
+      new Response(
+        JSON.stringify({ error: { code: 'duplicate', message: 'record already exists' } }),
+        { status: 409, headers: { 'Content-Type': 'application/json' } }
+      )
+    )
+    const client = new MuumuuClient({
+      baseUrl: 'https://api-sandbox.muumuu-domain.com/api/v2',
+      token: 'muu_pat_sandbox_test',
+      fetcher,
+    })
+
+    try {
+      await client.createDnsRecord('MU00000001', {
+        fqdn: '_tshirt-key.example.com.',
+        type: 'TXT',
+        value: 'v=1; ...',
+      })
+      assert.fail('expected MuumuuApiError')
+    } catch (err) {
+      assert.instanceOf(err, MuumuuApiError)
+      const e = err as MuumuuApiError
+      assert.equal(e.status, 409)
+      assert.equal(e.code, 'duplicate')
+    }
+  })
+})
