@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="ja">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>あなたのドメイン一覧</title>
+    @vite(['resources/css/app.css', 'resources/js/app.js'])
+  </head>
+  <body style="font-family: system-ui, sans-serif; max-width: 720px; margin: 2rem auto; padding: 0 1rem;">
+    <h1>あなたのドメイン一覧</h1>
+    <p style="color: #666;">取得件数: {{ meta.total }}</p>
+
+    @if(domains.length === 0)
+      <p>ドメインがまだ登録されていません。</p>
+    @else
+      <ul style="list-style: none; padding: 0;">
+        @each(domain in domains)
+          <li style="border: 1px solid #ddd; border-radius: 8px; padding: 1rem; margin-bottom: 0.75rem;">
+            <h2 style="margin: 0 0 0.25rem 0; font-size: 1.25rem;">{{ domain.fqdn }}</h2>
+            <p style="margin: 0; color: #444; font-size: 0.9rem;">
+              since {{ domain.contract['start-date'] }}
+              <span style="color: #999;">— state: {{ domain.state }}</span>
+            </p>
+          </li>
+        @end
+      </ul>
+    @end
+  </body>
+</html>
