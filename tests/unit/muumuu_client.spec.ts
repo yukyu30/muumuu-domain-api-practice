@@ -109,6 +109,23 @@ test.group('MuumuuClient#listDomains', () => {
     }
   })
 
+  test('baseUrl が末尾スラッシュ付きでも URL に二重スラッシュを作らない', async ({
+    assert,
+  }) => {
+    const { fetcher, calls } = createFakeFetcher(
+      jsonResponse({ data: [], meta: { total: 0, page: 1, 'page-size': 20 } })
+    )
+    const client = new MuumuuClient({
+      baseUrl: 'https://api-sandbox.muumuu-domain.com/api/v2/',
+      token: 'muu_pat_sandbox_test',
+      fetcher,
+    })
+
+    await client.listDomains()
+
+    assert.equal(calls[0].url, 'https://api-sandbox.muumuu-domain.com/api/v2/me/domains')
+  })
+
   test('429 のとき Retry-After を retryAfter として保持した MuumuuApiError を投げる', async ({
     assert,
   }) => {

@@ -64,7 +64,7 @@ export class MuumuuClient {
   private fetcher: typeof fetch
 
   constructor(options: MuumuuClientOptions) {
-    this.baseUrl = options.baseUrl
+    this.baseUrl = options.baseUrl.replace(/\/+$/, '')
     this.token = options.token
     this.fetcher = options.fetcher ?? fetch
   }
